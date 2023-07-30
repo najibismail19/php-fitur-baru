@@ -1,13 +1,15 @@
 <?php
-
+// Attribute
 #[Attribute]
 class NotBlank {
 
 }
 
+// Attribut Validation Emails
 #[Attribute(Attribute::TARGET_PROPERTY)]
 class Emails {
-    public array $emails;
+    private array $emails;
+    private string $categories;
     public function __construct(array $array) {
         foreach($array as $value) {
             if(trim($value) == "") {
@@ -16,9 +18,19 @@ class Emails {
             $this->emails[] = $value;
         }
     }
+
+    public function getEmails() {
+        $str = "";
+        foreach($this->emails as $email) {
+            $str .= $email . "|"; 
+        }
+        $length = strlen($str) - 1;
+        $str = substr($str, 0, $length);
+        return $str;
+    }
 }
 
-
+// Attribut Validation Length 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 class Length {
 
@@ -31,6 +43,7 @@ class Length {
     }
 }
 
+// Object Login Request in User 
 class LoginRequest {
 
     #[NotBlank]
@@ -41,21 +54,29 @@ class LoginRequest {
     #[Length(min : 6, max : 10)]
     public ?string $password;
 
-    #[Emails(["@gmail.com", "@yahoo.com"])]
+    #[Emails(["@gmail.com", "@yahoo.com", "@example.com"])]
     public ?string $email; 
 }
 
+// Funtion Validation Input
 function validation(object $object) : void
 {
+    // Reflection
     $class = new ReflectionClass($object);
+    // GetProperty Return Array of Object ReflectionProperty
     $properties = $class->getProperties();
+    // Looping Onject ReflectionProperty
     foreach($properties as $property) {
+        // Validation Initialied
         validationNotBlank($property, $object);
+        // Validation Length
         validationLength($property, $object);
+        // Validation Emails
         validationEmails($property, $object);
     }
 }
 
+// Function ValidationEmails
 function validationEmails(ReflectionProperty $property, $object){
     if(!$property->isInitialized($object) || $property->getValue($object) == null){
         return;
@@ -63,11 +84,15 @@ function validationEmails(ReflectionProperty $property, $object){
     $emails = $property->getAttributes("Emails", ReflectionAttribute::IS_INSTANCEOF);
     $value = $property->getValue($object);
     foreach ($emails as $email) {
-        $fullEmails = $email->newInstance();
-      
+        $objEmail = $email->newInstance();
+        $result = (bool) preg_match_all("/" . $objEmail->getEmails() . "/i", $property->getValue($object));
+        if(!$result) {
+            throw new Exception("Email {$property->getValue($object)} is in Valid!");
+        }
     }
 }
 
+// Function ValidationLength
 function validationLength(ReflectionProperty $property, $object){
     if(!$property->isInitialized($object) || $property->getValue($object) == null){
         return;
@@ -86,6 +111,7 @@ function validationLength(ReflectionProperty $property, $object){
     }
 }
 
+// Function ValidationInitialized
 function validationNotBlank(ReflectionProperty $property, $object)
 {
     $attributs = $property->getAttributes(NotBlank::class);
@@ -98,13 +124,17 @@ function validationNotBlank(ReflectionProperty $property, $object)
         }
 }
 
+// Test Validation 
 $najib = new LoginRequest();
-$najib->username = "sdasdsas";
-$najib->password = "sadasada";
-$najib->email = "sadas@gmail.com";
+$najib->username = "Najib";
+$najib->password = "Rahasia123";
+$najib->email = "Najib@gmail.com";
 
+// Coba validation
 try {
     validation($najib);
+// Tangkap Error Exception
 } catch(Exception $e) {
+    // Tampilkan Message/Pesan
     echo $e->getMessage();
 }
